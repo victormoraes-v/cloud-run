@@ -1,0 +1,14 @@
+# Framework do Google para executar funções Python
+functions-framework==3.5.0
+
+# Biblioteca cliente do Google Cloud BigQuery para executar as queries de busca e de criação das tabelas externas
+google-cloud-bigquery==3.25.0
+
+# Biblioteca para fazer requisições HTTP, usada para se comunicar com a API do GitHub
+requests==2.32.3
+
+# Biblioteca cliente do Google Cloud Secret Manager para buscar o token de acesso do GitHub de forma segura
+google-cloud-secret-manager==2.19.0
+
+sqlalchemy
+pymssql
