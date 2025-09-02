@@ -19,6 +19,10 @@ from google.cloud import storage, secretmanager
 # --- Importa as funções de tratamento dos arquivos
 from processors import get_processor
 
+# --- Imports para utilizar variaveis de ambiente em testes locais
+from dotenv import load_dotenv
+load_dotenv() 
+
 # --- Configuração do Logging (Executa uma vez na inicialização da instância) ---
 
 # Instancia o cliente do Cloud Logging
@@ -142,3 +146,11 @@ def _write_dataframe_to_gcs(df, original_file_name, destination_bucket_name):
     full_path = f"gs://{destination_bucket_name}/{destination_file_name}"
     logging.info(f"DataFrame salvo com sucesso em: {full_path}")
     return full_path
+
+
+# SERVER_IP = '10.0.1.100'
+# SHARE_PATH = 'Arquivos Suporte PBI'
+
+# file_path = f"\\\\{SERVER_IP}\\{SHARE_PATH}\\Info Lojas Servicos Farmaceuticos.xlsx"
+
+# df = pd.read_excel(file_path, header=4)
