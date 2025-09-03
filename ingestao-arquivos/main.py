@@ -11,6 +11,8 @@ import io
 import logging
 import base64
 from pathlib import Path
+from datetime import datetime
+import pytz
 
 # --- Imports para Logging e Clientes Google ---
 import google.cloud.logging
@@ -18,6 +20,9 @@ from google.cloud import storage, secretmanager
 
 # --- Importa as funções de tratamento dos arquivos
 from processors import get_processor
+
+#--- Importa as funções de tratamento dos arquivos
+from utils import normalize_column_names, add_ingestion_timestamp, get_secret, write_dataframe_to_gcs
 
 # --- Imports para utilizar variaveis de ambiente em testes locais
 from dotenv import load_dotenv
@@ -35,29 +40,15 @@ logging_client.setup_logging()
 
 # --- Fim da Configuração do Logging ---
 
-def _get_secret(secret_id, version_id="latest"):
-    """
-    Busca o valor de um secret no Google Cloud Secret Manager.
-    """
-    # Constrói o nome completo do recurso para o secret
-    name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{version_id}"
-    
-    # Faz a chamada para a API para acessar a versão do secret
-    response = secret_client.access_secret_version(request={"name": name})
-    
-    # O payload do secret vem em bytes, então precisamos decodificá-lo para uma string
-    return response.payload.data.decode("UTF-8")
-
-
-storage_client = storage.Client()
-secret_client = secretmanager.SecretManagerServiceClient()
+# storage_client = storage.Client()
+# secret_client = secretmanager.SecretManagerServiceClient()
 
 PROJECT_ID = os.environ.get('GCP_PROJECT')
 PROCESSED_BUCKET_NAME = os.environ.get('PROCESSED_BUCKET')
 SERVER_IP = '10.0.1.100'
 SHARE_PATH = 'Arquivos Suporte PBI'
-SMB_USER = _get_secret('admin-bi-user')
-SMB_PASSWORD = _get_secret('admin-bi-password')
+SMB_USER = get_secret(PROJECT_ID, 'admin-bi-user')
+SMB_PASSWORD = get_secret(PROJECT_ID,'admin-bi-password')
 
 
 def main(request):
@@ -96,9 +87,13 @@ def main(request):
         df = processor_function(file_bytes)
         logging.info("Dados transformados em DataFrame com sucesso.", extra={"json_fields": {"dataframe_shape": df.shape}})
 
-        # Etapa 4: Salvar o DataFrame como CSV no GCS
+        # Etapa 4: Cria coluna dt_ingestao com a data e hora atual
+        df = normalize_column_names(df)
+        df = add_ingestion_timestamp(df)
+
+        # Etapa 5: Salvar o DataFrame como CSV no GCS
         logging.info("Etapa 4: Escrevendo arquivo CSV no Cloud Storage...")
-        destination_path = _write_dataframe_to_gcs(df, file_to_process, PROCESSED_BUCKET_NAME)
+        destination_path = write_dataframe_to_gcs(df, file_to_process, PROCESSED_BUCKET_NAME)
 
         # Log de sucesso final com todos os detalhes importantes
         success_log = {
@@ -131,26 +126,9 @@ def main(request):
         logging.critical(f"Falha crítica e inesperada no processamento do arquivo {file_to_process}.", exc_info=True, extra={"json_fields": log_context})
         return (f"Erro interno inesperado no processamento do arquivo: {e}", 500)
 
-
-def _write_dataframe_to_gcs(df, original_file_name, destination_bucket_name):
-    """Converte um DataFrame para CSV e o salva em um bucket do GCS."""
-    folder_path = "arquivos/"
-    destination_file_name = f"{folder_path}{Path(original_file_name).stem}.csv"
-    destination_bucket = storage_client.bucket(destination_bucket_name)
-    destination_blob = destination_bucket.blob(destination_file_name)
-    
-    csv_data = df.to_csv(sep=',', index=False, encoding='utf-8')
-    
-    destination_blob.upload_from_string(csv_data, content_type='text/csv')
-    
-    full_path = f"gs://{destination_bucket_name}/{destination_file_name}"
-    logging.info(f"DataFrame salvo com sucesso em: {full_path}")
-    return full_path
-
-
 # SERVER_IP = '10.0.1.100'
 # SHARE_PATH = 'Arquivos Suporte PBI'
 
-# file_path = f"\\\\{SERVER_IP}\\{SHARE_PATH}\\Info Lojas Servicos Farmaceuticos.xlsx"
+# file_path = f"\\\\{SERVER_IP}\\{SHARE_PATH}\\Info Lojas.xlsx"
 
-# df = pd.read_excel(file_path, header=4)
+# df = pd.read_excel(file_path, sheet_name='Info Lojas', header=1)
