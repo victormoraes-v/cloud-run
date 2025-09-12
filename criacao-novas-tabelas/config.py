@@ -41,7 +41,7 @@ TABLE_TO_DB_SECRET_MAP = {
 
 # --- Caminhos de Arquivo no Repositório Dataform ---
 SOURCES_FILE_PATH_TEMPLATE = "definitions/sources/{instance}.js"
-RAWS_DIR_PATH_TEMPLATE = "definitions/raw/{instance}"
+RAWS_DIR_PATH_TEMPLATE = "definitions/bronze/{instance}"
 DDL_OPERATIONS_FILE_PATH_TEMPLATE = "ddl/create_external_table/{instance}.sqlx"
 # --- URI do Cloud Storage ---
 GCS_BASE_URI_TEMPLATE = "gs://grp-venancio-prd-dados_ingestao_dataflow/{instance}/{database}/dbo"
