@@ -9,7 +9,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia o código
-COPY main.py .
+COPY . .
 
 # Comando padrão do Job
 CMD ["python", "main.py"]
