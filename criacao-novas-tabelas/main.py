@@ -101,7 +101,7 @@ def main(request):
                 select_clause=select_clause
             )
             raw_file_path = f"{config.RAWS_DIR_PATH_TEMPLATE.format(instance=instance_name)}/{target_table}.sqlx"
-            commit_message_raw = f"feat: Adicionar/Atualizar modelo raw para {target_table}"
+            commit_message_raw = f"feat: Adicionar/Atualizar modelo bronze para {target_table}"
             github_client.upsert_sqlx_file(raw_file_path, new_branch_name, sqlx_content, commit_message_raw)
 
             # 7b. Lógica para o arquivo de FONTES (.js)

@@ -37,7 +37,7 @@ def generate_sqlx_content(
     select_clause: str
 ) -> str:
     """
-    Gera o conteúdo completo de um arquivo .sqlx para um modelo raw.
+    Gera o conteúdo completo de um arquivo .sqlx para um modelo bronze.
 
     Args:
         instance_name: Nome da instância de origem (ex: 'ncr').
@@ -57,7 +57,7 @@ def generate_sqlx_content(
         config {
             type: "%(type)s",
             database: "grp-venancio-prd-dados",
-            schema: "%(schema)s",
+            schema: "%(schema)s",%(bigquery_config)s
             tags: ["%(instance)s"]
         }
     """
@@ -73,7 +73,7 @@ def generate_sqlx_content(
     pre_operations_template = """
         pre_operations {
             ${when(incremental(),
-            `DELETE FROM ${self()} WHERE CAST(%(filter_col)s AS DATE) >= '${start_date}' AND CAST(%(filter_col)s AS DATE) < '${end_date}'`)
+            `DELETE FROM ${self()} WHERE DT >= '${start_date}' AND DT <= '${end_date}'`)
             }
         }
     """
@@ -83,17 +83,6 @@ def generate_sqlx_content(
             dt = (SELECT MAX(dt) FROM ${{ref("ext_{target_table}")}}) AND
             CAST(dt_ingestao AS DATETIME) = (SELECT MAX(CAST(dt_ingestao AS DATETIME)) FROM ${{ref("ext_{target_table}")}})
     """
-
-    # filter_template = """
-    #     WHERE
-    #         -- Filtro (Partition Pruning):
-    #         -- Diz ao BigQuery para olhar apenas para partições a partir da data do último dado processado.
-    #         dt >= DATE((SELECT MAX(t.dt_ingestao) FROM ${self()} AS t))
-
-    #         -- Filtro Fino (Seleção Precisa de Linhas):
-    #         -- Dentro das partições selecionadas, pega apenas as linhas que são estritamente mais novas que a última linha já salva na tabela de destino.
-    #         AND CAST(dt_ingestao AS DATETIME) > (SELECT MAX(t.dt_ingestao) FROM ${self()} AS t)
-    # """
 
     # Lógica para construir o arquivo parte por parte
     file_parts = []
@@ -105,11 +94,13 @@ def generate_sqlx_content(
 
     if migration_type.upper() == 'INCREMENTAL':
         variables["type"] = "incremental"
+        variables["bigquery_config"] = ",\n            bigquery: {partitionBy: 'DT'},"
         file_parts.append(textwrap.dedent(js_block_template).strip())
         file_parts.append(textwrap.dedent(config_block_template % variables).strip())
         file_parts.append(textwrap.dedent(pre_operations_template % variables).strip())
     else: # FULL
         variables["type"] = "table"
+        variables["bigquery_config"] = ""
         file_parts.append(textwrap.dedent(config_block_template % variables).strip())
 
     file_parts.append(select_clause)

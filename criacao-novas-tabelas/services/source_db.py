@@ -79,7 +79,7 @@ def generate_safe_cast_select(
 
     if partition_col_to_add:
         # Garante que a coluna de partição seja a primeira e esteja no formato correto
-        partition_clause = f"CAST({partition_col_to_add.upper()} AS DATE) AS {partition_col_to_add}"
+        partition_clause = f"CAST({partition_col_to_add.upper()} AS DATE) AS DT"
         select_clauses.append(partition_clause)
         print(f"Adicionando coluna de partição '{partition_col_to_add}' como 'dt' no SELECT.")
 
