@@ -5,30 +5,147 @@ from . import (
     dark_stores, 
     info_lojas_servicos_farmaceuticos,
     produtos_pricepoint,
-    canal_vendas
+    canal_vendas,
+    redes_infoprice,
+    bairros_infoprice,
+    iqvia
 )
-#from . import default_processor # Importante ter um fallback
+
 
 # Dicionário mapeando a chave ao módulo de processamento
 PROCESSOR_MAP = {
-    'Árvore MKT - Servicos.xlsx': arvore_mkt,
-    'Info Lojas.xlsx': info_lojas,
-    "Darks_Store_Lojas.xlsx": dark_stores,
-    "Info Lojas Servicos Farmaceuticos.xlsx": info_lojas_servicos_farmaceuticos,
-    "PRICEPOINT_CADASTRO PRODUTO_v2.xlsx": produtos_pricepoint,
-    "Canal de Vendas.xlsx": canal_vendas
+    'Árvore MKT - Servicos.xlsx': {
+        "module": arvore_mkt,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    'Info Lojas.xlsx': {
+        "module": info_lojas,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Darks_Store_Lojas.xlsx": {
+        "module": dark_stores,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Info Lojas Servicos Farmaceuticos.xlsx": {
+        "module": info_lojas_servicos_farmaceuticos,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "PRICEPOINT_CADASTRO PRODUTO_v2.xlsx": {
+        "module": produtos_pricepoint,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Canal de Vendas.xlsx": {
+        "module": canal_vendas,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Redes_InfoPrice.xlsx": {
+        "module": redes_infoprice,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Bairros_InfoPrice.xlsx": {
+        "module": bairros_infoprice,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_GEOGRAFIA_RPE.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_CANAL.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_PDV.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_PERIODO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_PROVEDOR.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_PRODUTO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_FAT_CONTAGEM_PDV.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "RPE_117_FF_PCP_VAREJO_M_VENANCIO_FAT_DEMANDA.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_DIM_CANAL_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_DIM_GEOGRAFIA_RPE_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_DIM_PDV_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_DIM_PERIODO_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_DIM_PRODUTO_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_DIM_PROVEDOR_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_FAT_CONTAGEM_PDV_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    },
+    "FF_107_FAT_DEMANDA_VENANCIO.txt": {
+        "module": iqvia,
+        "format": "parquet",
+        "write_mode": "partitioned"
+    }
 }
 
 def get_processor(filename):
     """Encontra e retorna a função de processamento correta."""
-    processor_module = PROCESSOR_MAP.get(filename)
-    if processor_module:
-        logging.info(f"Processador específico '{processor_module.__name__}' encontrado para o arquivo '{filename}'.")
-        return processor_module.process
-    # for key, processor_module in PROCESSOR_MAP.items():
-    #     if key in filename:
-    #         logging.info(f"Processador específico '{processor_module.__name__}' encontrado para o arquivo '{filename}'.")
-    #         return processor_module.process
+    # processor_module = PROCESSOR_MAP.get(filename)
+    config = PROCESSOR_MAP.get(filename)
+    if config:
+        logging.info(f"Processador encontrado para '{filename}' → módulo={config['module'].__name__}, formato={config['format']}, modo={config['write_mode']}")
+        return config["module"].process, config["format"], config["write_mode"]
+    # if processor_module:
+    #     logging.info(f"Processador específico '{processor_module.__name__}' encontrado para o arquivo '{filename}'.")
+    #     return processor_module.process
     
     # Se o loop terminar sem encontrar, use o padrão
     logging.warning(
