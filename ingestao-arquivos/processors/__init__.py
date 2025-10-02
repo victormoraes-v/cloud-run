@@ -8,7 +8,9 @@ from . import (
     canal_vendas,
     redes_infoprice,
     bairros_infoprice,
-    iqvia
+    iqvia,
+    agenda_sugestao_compras,
+    expurgo_pedidos_compras
 )
 
 
@@ -41,6 +43,16 @@ PROCESSOR_MAP = {
     },
     "Canal de Vendas.xlsx": {
         "module": canal_vendas,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Agenda_Sugestao_Compras.xlsx": {
+        "module": agenda_sugestao_compras,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Expurgo_Pedidos_Compras.xlsx": {
+        "module": expurgo_pedidos_compras,
         "format": "csv",
         "write_mode": "overwrite"
     },

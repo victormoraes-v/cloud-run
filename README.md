@@ -68,6 +68,8 @@ GITHUB_REPO=repositorio-dataform
 - `Canal de Vendas.xlsx`
 - `Redes_InfoPrice.xlsx`
 - `Bairros_InfoPrice.xlsx`
+- `Agenda_Sugestao_Compras.xlsx`
+- `Expurgo_Pedidos_Compras.xlsx`
 - Arquivos IQVIA (`.txt`)
 
 **Tecnologias**:
@@ -305,8 +307,3 @@ Para questões técnicas ou problemas com as funções, consulte:
 - Métricas no Cloud Monitoring
 - Documentação do Google Cloud Run
 - Issues do repositório
-
----
-
-**Última atualização**: Janeiro 2024  
-**Versão**: 1.0.0
