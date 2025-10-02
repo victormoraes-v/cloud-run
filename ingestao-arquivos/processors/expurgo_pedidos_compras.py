@@ -27,17 +27,18 @@ def process(file_path, username, password, bucket_name, file_to_process, file_fo
     df_pedidos_produtos = normalize_column_names(df_pedidos_produtos)
     df_pedidos_produtos = add_ingestion_timestamp(df_pedidos_produtos)
 
-    out_name = f"{file_name}.csv"
+    out_name_pedidos = f"{file_name}.csv"
     full_path_pedidos = write_dataframe_to_gcs(
         df_pedidos,
-        out_name,
+        out_name_pedidos,
         bucket_name,
         folder_path=destination_path.rsplit("/", 1)[0] + "/"
     )
 
+    out_name_pedidos_produtos = f"{file_name}_produtos.csv"
     full_path_produtos = write_dataframe_to_gcs(
         df_pedidos_produtos,
-        out_name,
+        out_name_pedidos_produtos,
         bucket_name,
         folder_path=destination_path.rsplit("/", 1)[0] + "/"
     )
