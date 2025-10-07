@@ -15,8 +15,8 @@ def generate_source_js_block(table_data: dict) -> str:
         Uma string formatada com o bloco de declaração da fonte.
     """
     target_name = table_data['target_table_name'].lower()
-    dataset = table_data['target_dataset'].lower()
-    external_name = f"ext_{target_name}"
+    dataset = 'landing'
+    external_name = f"ext_{target_name}".replace('__', '_')
 
     block_template = f"""
         declare({{
@@ -80,8 +80,8 @@ def generate_sqlx_content(
 
     filter_template = f"""
         WHERE
-            dt = (SELECT MAX(dt) FROM ${{ref("ext_{target_table}")}}) AND
-            CAST(dt_ingestao AS DATETIME) = (SELECT MAX(CAST(dt_ingestao AS DATETIME)) FROM ${{ref("ext_{target_table}")}})
+            dt = (SELECT MAX(dt) FROM ${{ref("ext_{target_table.replace('__', '_')}")}}) AND
+            CAST(dt_ingestao AS DATETIME) = (SELECT MAX(CAST(dt_ingestao AS DATETIME)) FROM ${{ref("ext_{target_table.replace('__', '_')}")}})
     """
 
     # Lógica para construir o arquivo parte por parte
@@ -94,7 +94,7 @@ def generate_sqlx_content(
 
     if migration_type.upper() == 'INCREMENTAL':
         variables["type"] = "incremental"
-        variables["bigquery_config"] = ",\n            bigquery: {partitionBy: 'DT'},"
+        variables["bigquery_config"] = "\n            bigquery: {partitionBy: 'DT'},"
         file_parts.append(textwrap.dedent(js_block_template).strip())
         file_parts.append(textwrap.dedent(config_block_template % variables).strip())
         file_parts.append(textwrap.dedent(pre_operations_template % variables).strip())
@@ -130,7 +130,7 @@ def generate_ddl_operation_block(
     """
     ddl_template = """
         -- Define a tabela externa para %(target_table)s
-        CREATE OR REPLACE EXTERNAL TABLE `%(project)s.%(dataset)s.%(target_table)s`
+        CREATE OR REPLACE EXTERNAL TABLE `%(project)s.landing.%(target_table)s`
         WITH PARTITION COLUMNS (
            dt DATE
         )

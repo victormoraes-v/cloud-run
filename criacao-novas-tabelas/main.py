@@ -88,7 +88,7 @@ def main(request):
             schema = source_db.get_source_table_schema(db_engine, source_table)
             select_clause = source_db.generate_safe_cast_select(
                 schema=schema,
-                source_table_name=f"ext_{target_table.lower()}",
+                source_table_name=f"ext_{target_table.lower().replace('__', '_')}",
                 partition_col_to_add=filter_column_incremental_join # Usa a coluna de filtro para o SELECT
             )
             sqlx_content = dataform_generator.generate_sqlx_content(
@@ -105,7 +105,7 @@ def main(request):
             github_client.upsert_sqlx_file(raw_file_path, new_branch_name, sqlx_content, commit_message_raw)
 
             # 7b. Lógica para o arquivo de FONTES (.js)
-            external_name = f"ext_{target_table.lower()}"
+            external_name = f"ext_{target_table.lower().replace('__', '_')}"
             if f'name: "{external_name}"' not in original_sources_content:
                 source_block = dataform_generator.generate_source_js_block(table_data)
                 new_source_blocks.append(source_block)

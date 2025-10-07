@@ -24,7 +24,8 @@ TABLE_TO_INSTANCE_MAP = {
     "programare_integracao_vtex_tables_migration_config": "programare",
     "serv_prd_stage_kruzer_tables_migration_config": "serv_prd",
     "rm_corporerm_tables_migration_config": "rm",
-    "rm_procfit_tables_migration_config": "rm"
+    "rm_procfit_tables_migration_config": "rm",
+    "serv_prd_stage_area_tables_migration_config": "serv_prd"
 }
 
 # Dicionário que mapeia a tabela de configuração para o ID do segredo de conexão do BD
@@ -36,7 +37,8 @@ TABLE_TO_DB_SECRET_MAP = {
     "programare_integracao_vtex_tables_migration_config": "programare_integracao_vtex_database_connection_config",
     "serv_prd_stage_kruzer_tables_migration_config": "serv_prd_stage_kruzer_database_connection_config",
     "rm_corporerm_tables_migration_config": "rm_corporerm_database_connection_config",
-    "rm_procfit_tables_migration_config": "rm_procfit_database_connection_config"
+    "rm_procfit_tables_migration_config": "rm_procfit_database_connection_config",
+    "serv_prd_stage_area_tables_migration_config": "serv_prd_stage_area_database_connection_config"
 }
 
 # --- Caminhos de Arquivo no Repositório Dataform ---
