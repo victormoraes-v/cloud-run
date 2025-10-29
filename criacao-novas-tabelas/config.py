@@ -25,7 +25,9 @@ TABLE_TO_INSTANCE_MAP = {
     "serv_prd_stage_kruzer_tables_migration_config": "serv_prd",
     "rm_corporerm_tables_migration_config": "rm",
     "rm_procfit_tables_migration_config": "rm",
-    "serv_prd_stage_area_tables_migration_config": "serv_prd"
+    "serv_prd_stage_area_tables_migration_config": "serv_prd",
+    "serv_prd_dw_tables_migration_config": "serv_prd",
+    "siga_tables_migration_config": "siga"
 }
 
 # Dicionário que mapeia a tabela de configuração para o ID do segredo de conexão do BD
@@ -38,13 +40,15 @@ TABLE_TO_DB_SECRET_MAP = {
     "serv_prd_stage_kruzer_tables_migration_config": "serv_prd_stage_kruzer_database_connection_config",
     "rm_corporerm_tables_migration_config": "rm_corporerm_database_connection_config",
     "rm_procfit_tables_migration_config": "rm_procfit_database_connection_config",
-    "serv_prd_stage_area_tables_migration_config": "serv_prd_stage_area_database_connection_config"
+    "serv_prd_stage_area_tables_migration_config": "serv_prd_stage_area_database_connection_config",
+    "serv_prd_dw_tables_migration_config": "serv_prd_dw_database_connection_config",
+    "siga_tables_migration_config": "siga_database_connection_config"
 }
 
 # --- Caminhos de Arquivo no Repositório Dataform ---
 SOURCES_FILE_PATH_TEMPLATE = "definitions/sources/{instance}.js"
 RAWS_DIR_PATH_TEMPLATE = "definitions/bronze/{instance}"
-DDL_OPERATIONS_FILE_PATH_TEMPLATE = "ddl/create_external_table/{instance}.sqlx"
+DDL_OPERATIONS_FILE_PATH_TEMPLATE = "definitions/ddl/create_external_table/{instance}.sqlx"
 # --- URI do Cloud Storage ---
 GCS_BASE_URI_TEMPLATE = "gs://grp-venancio-prd-dados_ingestao_dataflow/{instance}/{database}/dbo"
 
