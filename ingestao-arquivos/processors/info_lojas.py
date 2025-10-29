@@ -16,7 +16,7 @@ def process(file_path, username, password, bucket_name, file_to_process, file_fo
     destination_path = build_destination_path(file_to_process, f"arquivos/", write_mode, file_format)
 
     with smbclient.open_file(file_path, mode="rb", username=username, password=password) as f:
-        df = pd.read_excel(f, engine='openpyxl', sheet_name='Info Lojas', header=1)
+        df = pd.read_excel(f, engine='openpyxl', sheet_name='Info Lojas', header=1, decimal=",")
 
     df = normalize_column_names(df)
     df = add_ingestion_timestamp(df)
