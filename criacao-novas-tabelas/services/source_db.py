@@ -7,6 +7,7 @@ Módulo para interagir com o banco de dados de origem (SQL Server).
 import json
 from sqlalchemy import create_engine, engine, text
 from typing import Optional
+from urllib.parse import quote_plus
 
 # Mapeamento de tipos do SQL Server para o BigQuery
 SQL_TO_BQ_TYPE_MAP = {
@@ -30,7 +31,8 @@ def get_db_engine(db_connection_json: str) -> engine.Engine:
         Uma instância da engine SQLAlchemy.
     """
     db_conn = json.loads(db_connection_json)['connections'][0]
-    db_url = (f"mssql+pymssql://{db_conn['database_username']}:{db_conn['database_password']}@"
+    encoded_password = quote_plus(db_conn['database_password'])
+    db_url = (f"mssql+pymssql://{db_conn['database_username']}:{encoded_password}@"
               f"{db_conn['database_hostname']}:{db_conn['database_port']}/{db_conn['database_name']}")
     return create_engine(db_url)
 
