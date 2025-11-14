@@ -10,7 +10,8 @@ from . import (
     bairros_infoprice,
     iqvia,
     agenda_sugestao_compras,
-    expurgo_pedidos_compras
+    expurgo_pedidos_compras,
+    expurgo_mapas
 )
 
 
@@ -63,6 +64,11 @@ PROCESSOR_MAP = {
     },
     "Bairros_InfoPrice.xlsx": {
         "module": bairros_infoprice,
+        "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Expurgo_Mapas.xlsx": {
+        "module": expurgo_mapas,
         "format": "csv",
         "write_mode": "overwrite"
     },
