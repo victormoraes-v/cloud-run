@@ -29,7 +29,8 @@ TABLE_TO_INSTANCE_MAP = {
     "serv_prd_dw_tables_migration_config": "serv_prd",
     "siga_tables_migration_config": "siga",
     "portalfornecedor_tables_migration_config": "portalfornecedor",
-    "procfit_pbs_log_dados_tables_migration_config": "procfit"
+    "procfit_pbs_log_dados_tables_migration_config": "procfit",
+    "pedbot_tables_migration_config": "pedbot"
 }
 
 # Dicionário que mapeia a tabela de configuração para o ID do segredo de conexão do BD
@@ -46,7 +47,8 @@ TABLE_TO_DB_SECRET_MAP = {
     "serv_prd_dw_tables_migration_config": "serv_prd_dw_database_connection_config",
     "siga_tables_migration_config": "siga_database_connection_config",
     "portalfornecedor_tables_migration_config": "portalfornecedor_database_connection_config",
-    "procfit_pbs_log_dados_tables_migration_config": "procfit_pbs_log_dados_database_connection_config"
+    "procfit_pbs_log_dados_tables_migration_config": "procfit_pbs_log_dados_database_connection_config",
+    "pedbot_tables_migration_config": "pedbot_database_connection_config"
 }
 
 # --- Caminhos de Arquivo no Repositório Dataform ---

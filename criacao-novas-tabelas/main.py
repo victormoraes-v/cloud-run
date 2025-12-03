@@ -9,6 +9,7 @@ from services import gcp_services
 from services import source_db
 import dataform_generator
 from services.github_services import GitHubAPI
+from db.factory import get_loader
 
 @functions_framework.http
 def main(request):
@@ -35,7 +36,7 @@ def main(request):
         
         db_secret_id = config.TABLE_TO_DB_SECRET_MAP[table_config_name]
         db_connection_json = gcp_services.get_secret(config.GCP_PROJECT_ID, db_secret_id)
-        db_engine = source_db.get_db_engine(db_connection_json)
+        # db_engine = source_db.get_db_engine(db_connection_json)
         
         github_token = gcp_services.get_secret(config.GCP_PROJECT_ID, config.GITHUB_TOKEN_SECRET_ID)
         github_client = GitHubAPI(token=github_token, user=config.GITHUB_USER, repo=config.GITHUB_REPO)
@@ -72,6 +73,10 @@ def main(request):
         new_ddl_blocks = []
         db_details = json.loads(db_connection_json)['connections'][0]
         database_name = db_details['database_name']
+        data_source_type = db_details['data_source_type']
+
+        loader = get_loader(data_source_type)
+        db_engine = loader.get_engine(db_connection_json)
 
         for table_data in pending_tables:
             source_table = table_data['source_table_name']
@@ -85,12 +90,19 @@ def main(request):
             print(f"--- Processando Tabela: {source_table} -> {target_table} ---")
 
             # 7a. Lógica para o modelo RAW (.sqlx)
-            schema = source_db.get_source_table_schema(db_engine, source_table)
-            select_clause = source_db.generate_safe_cast_select(
+            # schema = source_db.get_source_table_schema(db_engine, source_table)
+            schema = loader.get_schema(db_engine, source_table)
+            # select_clause = source_db.generate_safe_cast_select(
+            #     schema=schema,
+            #     source_table_name=f"ext_{target_table.lower().replace('__', '_')}",
+            #     partition_col_to_add=filter_column_incremental_join # Usa a coluna de filtro para o SELECT
+            # )
+            select_clause = loader.generate_select_safe_cast(
                 schema=schema,
-                source_table_name=f"ext_{target_table.lower().replace('__', '_')}",
-                partition_col_to_add=filter_column_incremental_join # Usa a coluna de filtro para o SELECT
+                table=f"ext_{target_table.lower().replace('__', '_')}",
+                partition_col=filter_column_incremental_join
             )
+            
             sqlx_content = dataform_generator.generate_sqlx_content(
                 instance_name=instance_name,
                 target_dataset=table_data['target_dataset'],
