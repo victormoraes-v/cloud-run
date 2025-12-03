@@ -1,7 +1,0 @@
-pandas
-pyarrow
-SQLAlchemy
-psycopg2-binary
-google-cloud-storage
-pytz
-load_dotenv
