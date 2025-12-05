@@ -11,7 +11,11 @@ from . import (
     iqvia,
     agenda_sugestao_compras,
     expurgo_pedidos_compras,
-    expurgo_mapas
+    expurgo_mapas,
+    crm_class,
+    crm_class_historico_cliente,
+    crm_class_propz,
+    produtos_margem_minima
 )
 
 
@@ -70,6 +74,26 @@ PROCESSOR_MAP = {
     "Expurgo_Mapas.xlsx": {
         "module": expurgo_mapas,
         "format": "csv",
+        "write_mode": "overwrite"
+    },
+    "Classificacao CRM.xlsx": {
+        "module": crm_class,
+        "format": "xlsx",
+        "write_mode": "overwrite"
+    },
+    "Classificacao CRM - Class Historico Cliente.xlsx": {
+        "module": crm_class_historico_cliente,
+        "format": "xlsx",
+        "write_mode": "overwrite"
+    },
+    "Classificacao CRM - Propz.xlsx": {
+        "module": crm_class_propz,
+        "format": "xlsx",
+        "write_mode": "overwrite"
+    },
+    "PRODUTOS_MARGEM_MINIMA.xlsx": {
+        "module": produtos_margem_minima,
+        "format": "xlsx",
         "write_mode": "overwrite"
     },
     "RPE_117_FF_PCP_VAREJO_M_VENANCIO_DIM_GEOGRAFIA_RPE.txt": {
