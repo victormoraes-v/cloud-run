@@ -1,12 +1,13 @@
 import time
 import json
+import os
 import requests
 import functions_framework
+from pathlib import Path
 
 # Importa os módulos refatorados da sua aplicação
 import config
 from services import gcp_services
-from services import source_db
 import dataform_generator
 from services.github_services import GitHubAPI
 from db.factory import get_loader
@@ -72,14 +73,26 @@ def main(request):
         new_source_blocks = []
         new_ddl_blocks = []
         db_details = json.loads(db_connection_json)['connections'][0]
-        database_name = db_details['database_name']
+        database_name = db_details.get('database_name', None)
         data_source_type = db_details['data_source_type']
 
-        loader = get_loader(data_source_type)
-        db_engine = loader.get_engine(db_connection_json)
+        # Determina se é arquivo ou banco de dados
+        is_file_source = data_source_type.upper() in ('FILES', 'CSV', 'EXCEL', 'PARQUET', 'TXT')
+        
+        # Cria o loader apropriado
+        if is_file_source:
+            # Para arquivos, o loader será criado por tabela com seus parâmetros específicos
+            loader = None
+            db_engine = None
+        else:
+            # Para bancos de dados, cria o loader uma vez
+            loader = get_loader(data_source_type)
+            db_engine = loader.get_engine(db_connection_json)
 
         for table_data in pending_tables:
-            source_table = table_data['source_table_name']
+            # Para arquivos, source_table_name pode conter o caminho do arquivo
+            # Para bancos, source_table_name contém o nome da tabela
+            source_table = table_data.get('source_table_name') or table_data.get('source_file_name', '')
             target_table = table_data['target_table_name']
             
             # --- CORREÇÃO: Revertido para o nome original da sua coluna ---
@@ -87,22 +100,24 @@ def main(request):
             
             filter_column_incremental_join = table_data['filter_column'] if incremental_join_col else None
             
-            print(f"--- Processando Tabela: {source_table} -> {target_table} ---")
+            print(f"--- Processando: {source_table} -> {target_table} ---")
 
             # 7a. Lógica para o modelo RAW (.sqlx)
-            # schema = source_db.get_source_table_schema(db_engine, source_table)
-            schema = loader.get_schema(db_engine, source_table)
-            # select_clause = source_db.generate_safe_cast_select(
-            #     schema=schema,
-            #     source_table_name=f"ext_{target_table.lower().replace('__', '_')}",
-            #     partition_col_to_add=filter_column_incremental_join # Usa a coluna de filtro para o SELECT
-            # )
+            # Para arquivos, cria o loader com os parâmetros específicos desta tabela
+            if is_file_source:
+                file_path = table_data.get('source_file_path')
+                loader = get_loader(data_source_type, file_path=file_path, read_params=None)
+                schema = loader.get_schema(table=file_path)  # Para arquivos, passa o caminho como 'table'
+            else:
+                # Para bancos de dados, usa o loader já criado
+                schema = loader.get_schema(db_engine, source_table)
+
             select_clause = loader.generate_select_safe_cast(
                 schema=schema,
                 table=f"ext_{target_table.lower().replace('__', '_')}",
                 partition_col=filter_column_incremental_join
             )
-            
+            print(select_clause)
             sqlx_content = dataform_generator.generate_sqlx_content(
                 instance_name=instance_name,
                 target_dataset=table_data['target_dataset'],
@@ -112,6 +127,7 @@ def main(request):
                 filter_column=table_data['filter_column'],
                 select_clause=select_clause
             )
+
             raw_file_path = f"{config.RAWS_DIR_PATH_TEMPLATE.format(instance=instance_name)}/{target_table}.sqlx"
             commit_message_raw = f"feat: Adicionar/Atualizar modelo bronze para {target_table}"
             github_client.upsert_sqlx_file(raw_file_path, new_branch_name, sqlx_content, commit_message_raw)
@@ -123,12 +139,32 @@ def main(request):
                 new_source_blocks.append(source_block)
 
             # 7c. Lógica para o arquivo de DDL (.sqlx)
-            gcs_uri = config.GCS_BASE_URI_TEMPLATE.format(instance=instance_name, database=database_name.lower()) + f"/{source_table.lower()}"
+            if is_file_source:               
+                # Primeiro busca o file_format da tabela de configuração
+                file_name = Path(source_table).name  # Nome completo do arquivo com extensão
+                
+                # Busca TODAS as configurações do arquivo (pode ter múltiplas configurações)
+                cfg = gcp_services.get_migration_table_config(
+                    config.GCP_PROJECT_ID,
+                    'arquivos_rede_files_format_ingestion_config',
+                    target_table
+                )
+                
+                # Encontra a configuração que corresponde a esta linha do pending_tables
+                #cfg = next((c for c in all_configs if c.get('target_table_name', '').lower() == target_table.lower()), None)
+                
+                file_format = cfg['output_file_format']
+                # Depois monta o GCS URI com a extensão correta baseada no file_format
+                gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE.format(instance=instance_name) + f"/{cfg['output_file_name']}"
+            else:
+                gcs_uri = config.GCS_BASE_URI_TEMPLATE.format(instance=instance_name, database=database_name.lower()) + f"/{source_table.lower()}"
+                file_format = 'parquet'
             ddl_block = dataform_generator.generate_ddl_operation_block(
                 target_dataset=table_data['target_dataset'],
                 target_table=external_name,
                 partition_column=table_data['partition_column'],
-                gcs_uri=gcs_uri
+                gcs_uri=gcs_uri,
+                file_format=file_format
             )
             if f"EXTERNAL TABLE `grp-venancio-prd-dados.{table_data['target_dataset']}.{external_name}`" not in original_ddl_content:
                  new_ddl_blocks.append(ddl_block)
@@ -157,7 +193,8 @@ def main(request):
             )
         else:
             print("Nenhum DDL novo para adicionar. Arquivo de operações DDL não modificado.")
-            
+        
+        print(pending_tables)
         # 9. Atualizar as flags no BigQuery
         gcp_services.update_table_creation_flags(
             project_id=config.GCP_PROJECT_ID,

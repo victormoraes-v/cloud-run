@@ -12,5 +12,9 @@ google-cloud-secret-manager==2.19.0
 
 sqlalchemy
 pymssql
-psycopg2
+psycopg2-binary
 pymongo
+
+pandas
+fsspec
+gcsfs

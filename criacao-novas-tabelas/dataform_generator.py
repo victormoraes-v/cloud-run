@@ -114,7 +114,8 @@ def generate_ddl_operation_block(
     target_dataset: str,
     target_table: str,
     partition_column: str,
-    gcs_uri: str
+    gcs_uri: str,
+    file_format: str = 'parquet'
 ) -> str:
     """
     Gera um bloco de código 'CREATE OR REPLACE EXTERNAL TABLE' para uma tabela.
@@ -124,10 +125,19 @@ def generate_ddl_operation_block(
         target_table: O nome da tabela de destino.
         partition_column: A coluna de partição da tabela externa.
         gcs_uri: O URI base no Google Cloud Storage para os arquivos Parquet.
+        file_format: O formato do arquivo (parquet, csv, etc).
 
     Returns:
         Uma string formatada com o comando DDL.
     """
+    # Opções específicas para CSV
+    csv_options = ""
+    if file_format.lower() == 'csv':
+        csv_options = """,
+            field_delimiter = ',',
+            allow_quoted_newlines = TRUE,
+            encoding = 'UTF-8'"""
+    
     ddl_template = """
         -- Define a tabela externa para %(target_table)s
         CREATE OR REPLACE EXTERNAL TABLE `%(project)s.landing.%(target_table)s`
@@ -135,9 +145,9 @@ def generate_ddl_operation_block(
            dt DATE
         )
         OPTIONS (
-            format = 'PARQUET',
+            format = '%(file_format)s',
             uris = ['%(uri)s/*'],
-            hive_partition_uri_prefix = '%(uri)s/'
+            hive_partition_uri_prefix = '%(uri)s/'%(csv_options)s
         );
     """
     
@@ -147,6 +157,8 @@ def generate_ddl_operation_block(
         "target_table": target_table,
         "partition_col": partition_column,
         "uri": gcs_uri,
+        "file_format": file_format,
+        "csv_options": csv_options,
     }
     
     return textwrap.dedent(ddl_template % variables).strip()
