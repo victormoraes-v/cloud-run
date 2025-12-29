@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import json
 
 from processors import process_generic
-from utils import get_secret, build_destination_path, get_migration_table_config
+from utils import get_secret, get_all_migration_table_configs
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -21,37 +21,59 @@ def run_job():
 
     try:
         # 0) Busca secrets
-        creds = json.loads(get_secret(PROJECT_ID, "arquivos_rede_pipeline_migration_config"))
-        server_ip = creds['host']
-        smb_user = creds['username']
-        smb_password = creds['password']
-        table_config_name = creds['migration_config_table']
+        migration_config = json.loads(get_secret(PROJECT_ID, "arquivos_rede_pipeline_migration_config"))
+        conn_config_secret = migration_config['data_connection_config_file_name']
+        table_config_name = migration_config['ingestion_config_table']
 
-        # 1) Busca config do arquivo
-        row = get_migration_table_config(table_config_name, file_to_process)
+        creds = json.loads(get_secret(PROJECT_ID, conn_config_secret))['connections'][0]
+        server_ip = creds['database_hostname']
+        smb_user = creds['database_username']
+        smb_password = creds['database_password']
 
-        # 2) Converte Row para dict
-        cfg = dict(row)
+        # 1) Busca TODAS as configs do arquivo (pode ter múltiplas abas)
+        configs = get_all_migration_table_configs(table_config_name, file_to_process)
 
-        # log do que achou
-        logging.info(f"🔎 Config carregada: {cfg}")
+        logging.info(f"🔎 Encontradas {len(configs)} configuração(ões) para o arquivo {file_to_process}")
 
-        # 3) Monta o caminho smb
-        file_path = f"\\\\{server_ip}\\{cfg['file_path']}\\{file_to_process}"
-        log_ctx = {"filename": file_to_process, "file_path": file_path}
+        # 2) Monta o caminho smb (usa a primeira config para pegar o file_path)
+        file_path = f"\\\\{server_ip}\\{configs[0]['file_path']}\\{file_to_process}"
+        log_ctx = {"filename": file_to_process, "file_path": file_path, "total_configs": len(configs)}
 
-        # 5) Executa processamento
-        logging.info(f"Iniciando processor para {file_to_process}", extra={"json_fields": log_ctx})
+        # 3) Processa cada configuração (cada aba)
+        processed_count = 0
+        for idx, cfg in enumerate(configs, 1):
+            sheet_name = cfg.get('sheet_name', 'N/A')
+            logging.info(
+                f"📄 Processando configuração {idx}/{len(configs)} - Aba: {sheet_name}",
+                extra={"json_fields": {**log_ctx, "sheet_name": sheet_name, "config_index": idx}}
+            )
 
-        process_generic(
-            cfg=cfg,
-            file_path=file_path,
-            username=smb_user,
-            password=smb_password,
-            bucket_name=PROCESSED_BUCKET_NAME
+            try:
+                process_generic(
+                    cfg=cfg,
+                    file_path=file_path,
+                    username=smb_user,
+                    password=smb_password,
+                    bucket_name=PROCESSED_BUCKET_NAME
+                )
+                processed_count += 1
+                logging.info(
+                    f"✅ Configuração {idx}/{len(configs)} processada com sucesso (Aba: {sheet_name})",
+                    extra={"json_fields": {**log_ctx, "sheet_name": sheet_name}}
+                )
+            except Exception as e:
+                logging.error(
+                    f"❌ Erro ao processar configuração {idx}/{len(configs)} (Aba: {sheet_name}): {e}",
+                    exc_info=True,
+                    extra={"json_fields": {**log_ctx, "sheet_name": sheet_name}}
+                )
+                # Continua processando as outras configurações mesmo se uma falhar
+                continue
+
+        logging.info(
+            f"Processamento concluído: {processed_count}/{len(configs)} configuração(ões) processada(s) com sucesso.",
+            extra={"json_fields": {**log_ctx, "processed_count": processed_count}}
         )
-
-        logging.info("Processamento concluído com sucesso.", extra={"json_fields": log_ctx})
         return 0
 
     except Exception as e:

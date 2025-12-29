@@ -9,7 +9,7 @@ def parse_sheet_name(value):
       None → None (usar default do pandas)
     """
     if value is None or value == "":
-        return None
+        return 0
 
     try:
         return int(value)
@@ -57,8 +57,8 @@ def read_file_from_smb(file_object, cfg: dict):
 
         params = {
             "sheet_name": sheet,
-            "header": cfg.get("header_row", 0),
-            "decimal": cfg.get("decimal", "."),
+            "header": cfg.get("header_row", 0) or 0,
+            "decimal": cfg.get("decimal", ".") or ".",
             "header": header,
             "engine": "openpyxl"
         }
@@ -71,9 +71,9 @@ def read_file_from_smb(file_object, cfg: dict):
     # ============= CSV / TXT =============
     if file_format in ("csv", "txt"):
         params = {
-            "delimiter": cfg.get("delimiter", ","),
-            "decimal": cfg.get("decimal", "."),
-            "encoding": cfg.get("encoding", "utf-8"),
+            "delimiter": cfg.get("delimiter", ",") or ',',
+            "decimal": cfg.get("decimal", ".") or ".",
+            "encoding": cfg.get("encoding", "utf-8") or 'utf-8',
             "header": header,
             "chunksize": chunksize  # se None → DataFrame único
         }

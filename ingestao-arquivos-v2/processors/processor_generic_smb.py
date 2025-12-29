@@ -37,9 +37,10 @@ def process_generic(cfg: dict, file_path: str, username: str, password: str, buc
                 save_to_gcs(
                     df=chunk,
                     bucket_name=bucket_name,
-                    folder_path=cfg.get("destination_folder", "arquivos/"),
+                    folder_path=cfg.get("gcs_folder", "arquivos/"),
                     write_mode=cfg.get("write_mode", "partitioned"),
-                    file_format=cfg.get("output_file_format", "parquet")
+                    file_format=cfg.get("output_file_format", "parquet"),
+                    output_file_name=cfg.get("output_file_name", None)
                 )
 
             logging.info(f"Processamento em chunks finalizado: {cfg.get('file_name')}")
@@ -48,16 +49,17 @@ def process_generic(cfg: dict, file_path: str, username: str, password: str, buc
     # 3. Dataframe único (sem chunks)
     df = data
 
-    df = _apply_common_transformations(df, cfg)
     df = _apply_custom_transformation(df, cfg)
+    df = _apply_common_transformations(df, cfg)
 
     # 4. SALVAR RESULTADO
     save_to_gcs(
         df=df,
         bucket_name=bucket_name,
-        folder_path=cfg.get("destination_folder", "arquivos/"),
+        folder_path=cfg.get("gcs_folder", "arquivos/"),
         write_mode=cfg.get("write_mode", "overwrite"),
-        file_format=cfg.get("output_file_format", "csv")
+        file_format=cfg.get("output_file_format", "csv"),
+        output_file_name=cfg.get("output_file_name", None)
     )
 
     logging.info(f"Processamento concluído: {cfg.get('file_name')}")
@@ -79,9 +81,9 @@ def _apply_custom_transformation(df, cfg):
     """Executa transformações específicas se houver um módulo customizado."""
     custom_processor = cfg.get("custom_processor")
 
+    print(custom_processor)
     if custom_processor:
-        logging.info(f"Aplicando transformação customizada: {custom_processor}")
         module = import_module(f"processors.{custom_processor}")
-        df = module.custom_transform(df)
+        df = module.custom_transform(df, file_name=cfg.get("file_name", None))
 
     return df

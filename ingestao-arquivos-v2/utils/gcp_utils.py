@@ -74,6 +74,46 @@ def get_migration_table_config(table_config, file_name):
 
     return row_dict
 
+def get_all_migration_table_configs(table_config, file_name):
+    """
+    Busca TODAS as configurações ativas para um arquivo (útil para arquivos com múltiplas abas).
+    
+    Args:
+        table_config: Nome da tabela de configuração
+        file_name: Nome do arquivo a ser processado
+    
+    Returns:
+        Lista de dicionários, cada um representando uma configuração (aba) do arquivo
+    """
+    client = bigquery.Client()
+    
+    query = f"""
+    SELECT *
+    FROM data_migration_config.{table_config}
+    WHERE file_name = @file_name AND active = TRUE
+    ORDER BY sheet_name, file_name
+    """
+    result = list(client.query(query, job_config=bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ScalarQueryParameter("file_name", "STRING", file_name)]
+    )))
+
+    if not result:
+        raise ValueError(
+            f"📌 Arquivo '{file_name}' não está configurado na tabela '{table_config}'.\n"
+            "🛑 Nenhum processamento foi executado.\n"
+            "💡 Para habilitar este arquivo, insira uma linha na tabela com todas as configurações necessárias.\n"
+            "👉 Exemplo:\n"
+            f"INSERT INTO data_migration_config.{table_config} (...campos...) VALUES (...);\n"
+        )
+
+    # Converte cada Row para dict e coloca chaves em minúsculo
+    configs = []
+    for row in result:
+        row_dict = {k.lower(): v for k, v in dict(row).items()}
+        configs.append(row_dict)
+
+    return configs
+
 def build_destination_path(original_file_name: str, folder_path: str, write_mode: str, file_format: str) -> str:
     """
     Monta o caminho do arquivo no GCS de acordo com o write_mode.
@@ -139,7 +179,7 @@ def save_to_gcs(
     folder_path: str = "arquivos/",
     write_mode: str = "overwrite",
     file_format: str = "csv",
-    original_file_name: str | None = None
+    output_file_name: str | None = None
 ):
     """
     Salva DataFrame no GCS de acordo com o modo de escrita:
@@ -155,21 +195,31 @@ def save_to_gcs(
     # ===========================================================
     # 1) Nome do arquivo
     # ===========================================================
-    if write_mode == "overwrite" and original_file_name:
-        final_name = f"{Path(original_file_name).stem}.{file_format}"
-    else:
-        final_name = f"{uuid.uuid4()}.{file_format}"
+
+    tz = pytz.timezone("America/Sao_Paulo")
+    now_str = datetime.now(tz).strftime("%Y-%m-%d_%H:%M:%S.%f")
+    # final_name = f"{Path(original_file_name).stem}_{now_str}.{file_format}"
+    final_name = f"{output_file_name}.{file_format}"
+    
+    
+    # if write_mode == "overwrite" and original_file_name:
+    #     final_name = f"{Path(original_file_name).stem}_{now_str}.{file_format}"
+    # else:
+    #     final_name = f"{uuid.uuid4()}.{file_format}"
 
     # ===========================================================
     # 2) Monta path de destino com ou sem dt=
     # ===========================================================
     base_path = folder_path.rstrip("/")
 
-    if write_mode == "partitioned":
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        blob_path = f"{base_path}/dt={today}/{final_name}"
-    else:
-        blob_path = f"{base_path}/{final_name}"
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    blob_path = f"{base_path}/{output_file_name}/dt={today}/{final_name}"
+
+    # if write_mode == "partitioned":
+    #     today = datetime.utcnow().strftime("%Y-%m-%d")
+    #     blob_path = f"{base_path}/dt={today}/{final_name}"
+    # else:
+    #     blob_path = f"{base_path}/{final_name}"
 
     blob = bucket.blob(blob_path)
 
