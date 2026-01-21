@@ -1,0 +1,12 @@
+# HTTP / API
+requests
+urllib3
+
+# Google Cloud
+google-cloud-storage
+
+# Parquet / Arrow
+pyarrow
+
+# Env vars local
+python-dotenv
