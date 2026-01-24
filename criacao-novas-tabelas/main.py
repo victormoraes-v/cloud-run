@@ -24,23 +24,29 @@ def main(request):
         # 2. Obter dados de entrada a partir do payload da requisição
         request_json = request.get_json(silent=True)
         config_table_id = request_json.get('config_table_id') if request_json else None
+        tables_to_create = request_json.get('tables') or []
         if not config_table_id:
             return ("'config_table_id' não encontrado no payload.", 400)
 
-        # 3. Obter a lista de tabelas pendentes do BigQuery
-        pending_tables = gcp_services.get_pending_tables(config.GCP_PROJECT_ID, config_table_id)
-        if not pending_tables:
-            return ("Nenhuma tabela pendente encontrada. Finalizando com sucesso.", 200)
-
-        # 4. Obter credenciais e configurar clientes
+        # 3. Obter credenciais e configurar clientes
         table_config_name = config_table_id.split(".")[-1]
         
         db_secret_id = config.TABLE_TO_DB_SECRET_MAP[table_config_name]
         db_connection_json = gcp_services.get_secret(config.GCP_PROJECT_ID, db_secret_id)
-        # db_engine = source_db.get_db_engine(db_connection_json)
+        db_details = json.loads(db_connection_json)['connections'][0]
+        database_name = db_details.get('database_name', None)
+        data_source_type = db_details['data_source_type']
+
+        # Determina se é arquivo ou banco de dados
+        is_file_source = data_source_type.upper() in ('FILES', 'CSV', 'EXCEL', 'PARQUET', 'TXT')
         
         github_token = gcp_services.get_secret(config.GCP_PROJECT_ID, config.GITHUB_TOKEN_SECRET_ID)
         github_client = GitHubAPI(token=github_token, user=config.GITHUB_USER, repo=config.GITHUB_REPO)
+
+        # 4. Obter a lista de tabelas pendentes do BigQuery
+        pending_tables = gcp_services.get_pending_tables(config.GCP_PROJECT_ID, config_table_id, tables_to_create, is_file_source)
+        if not pending_tables:
+            return ("Nenhuma tabela pendente encontrada. Finalizando com sucesso.", 200)
 
         # 5. Preparar a branch no GitHub
         timestamp = int(time.time())
@@ -72,12 +78,6 @@ def main(request):
         # 7. Processar cada tabela pendente, construindo listas de mudanças
         new_source_blocks = []
         new_ddl_blocks = []
-        db_details = json.loads(db_connection_json)['connections'][0]
-        database_name = db_details.get('database_name', None)
-        data_source_type = db_details['data_source_type']
-
-        # Determina se é arquivo ou banco de dados
-        is_file_source = data_source_type.upper() in ('FILES', 'CSV', 'EXCEL', 'PARQUET', 'TXT')
         
         # Cria o loader apropriado
         if is_file_source:
@@ -115,9 +115,9 @@ def main(request):
             select_clause = loader.generate_select_safe_cast(
                 schema=schema,
                 table=f"ext_{target_table.lower().replace('__', '_')}",
-                partition_col=filter_column_incremental_join
+                partition_col=filter_column_incremental_join or table_data['partition_column']
             )
-            print(select_clause)
+            
             sqlx_content = dataform_generator.generate_sqlx_content(
                 instance_name=instance_name,
                 target_dataset=table_data['target_dataset'],
@@ -140,9 +140,6 @@ def main(request):
 
             # 7c. Lógica para o arquivo de DDL (.sqlx)
             if is_file_source:               
-                # Primeiro busca o file_format da tabela de configuração
-                file_name = Path(source_table).name  # Nome completo do arquivo com extensão
-                
                 # Busca TODAS as configurações do arquivo (pode ter múltiplas configurações)
                 cfg = gcp_services.get_migration_table_config(
                     config.GCP_PROJECT_ID,
@@ -155,7 +152,7 @@ def main(request):
                 
                 file_format = cfg['output_file_format']
                 # Depois monta o GCS URI com a extensão correta baseada no file_format
-                gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE.format(instance=instance_name) + f"/{cfg['output_file_name']}"
+                gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE + f"/{cfg['gcs_folder']}" + f"/{cfg['output_file_name']}"
             else:
                 gcs_uri = config.GCS_BASE_URI_TEMPLATE.format(instance=instance_name, database=database_name.lower()) + f"/{source_table.lower()}"
                 file_format = 'parquet'
@@ -166,8 +163,9 @@ def main(request):
                 gcs_uri=gcs_uri,
                 file_format=file_format
             )
-            if f"EXTERNAL TABLE `grp-venancio-prd-dados.{table_data['target_dataset']}.{external_name}`" not in original_ddl_content:
-                 new_ddl_blocks.append(ddl_block)
+            if f"EXTERNAL TABLE `grp-venancio-prd-dados.landing.{external_name}`" not in original_ddl_content:
+                gcp_services.execute_ddl_block(config.GCP_PROJECT_ID, ddl_block, external_name)
+                new_ddl_blocks.append(ddl_block)
         
         # 8. Commitar as mudanças nos arquivos de configuração, se houver
         commit_message_suffix = f"para o lote {timestamp}"
@@ -209,4 +207,4 @@ def main(request):
     except Exception as e:
         print(f"ERRO FATAL: Um erro inesperado ocorreu: {e}")
         # Lembre-se que a branch criada pode precisar ser deletada manualmente em caso de falha.
-        return ("Ocorreu um erro interno. Verifique os logs da função.", 500)
+        return (f"Ocorreu um erro interno: {e}. Verifique os logs da função.", 500)

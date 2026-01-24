@@ -87,13 +87,13 @@ class FileLoader:
 
         # Sem partição → SELECT * FROM
         if not partition_col:
-            return f"SELECT\n{indent}*\nFROM ${{ref('{table}')}}"
+            return f"SELECT\n{indent}*\n{indent}EXCEPT(DT)\nFROM ${{ref('{table}')}}"
 
         # Com partição → SELECT CAST(PARTITION_COLUMN AS DATE) AS DT, *, EXCEPT(DT)
         lines = [
             "SELECT",
             f"{indent}CAST({partition_col} AS DATE) AS DT,",
-            f"{indent}*,",
+            f"{indent}*",
             f"{indent}EXCEPT(DT)",
             f"FROM ${{ref('{table}')}}",
         ]

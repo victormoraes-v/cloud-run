@@ -75,6 +75,9 @@ class PostgresLoader(BaseLoader):
             clauses.append(f"{partition_col}::date AS DT")
 
         for col, typ in schema:
+            # Evita duplicar DT quando já estamos gerando DT a partir da coluna de partição.
+            if partition_col and col.upper() == "DT":
+                continue
             bq_type = POSTGRES_TYPE_MAP.get(typ, "STRING")
             clauses.append(f"CAST({col.lower()} AS {bq_type}) AS {col}")
 

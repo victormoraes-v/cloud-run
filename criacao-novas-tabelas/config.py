@@ -18,6 +18,7 @@ BASE_BRANCH = "main"
 # Dicionário que mapeia a tabela de configuração para a instância de origem
 TABLE_TO_INSTANCE_MAP = {
     "ncr_tables_migration_config": "ncr",
+    "analisa_tables_migration_config": "analisa",
     "procfit_pbs_venancio_tables_migration_config": "procfit",
     "programare_dbfar_tables_migration_config": "programare",
     "programare_integracao_kruzer_tables_migration_config": "programare",
@@ -37,6 +38,7 @@ TABLE_TO_INSTANCE_MAP = {
 # Dicionário que mapeia a tabela de configuração para o ID do segredo de conexão do BD
 TABLE_TO_DB_SECRET_MAP = {
     "ncr_tables_migration_config": "ncr_database_connection_config",
+    "analisa_tables_migration_config": "analisa_database_connection_config",
     "procfit_pbs_venancio_tables_migration_config": "procfit_pbs_venancio_database_connection_config",
     "programare_dbfar_tables_migration_config": "programare_dbfar_database_connection_config",
     "programare_integracao_kruzer_tables_migration_config": "programare_integracao_kruzer_database_connection_config",
@@ -59,7 +61,7 @@ RAWS_DIR_PATH_TEMPLATE = "definitions/bronze/{instance}"
 DDL_OPERATIONS_FILE_PATH_TEMPLATE = "definitions/ddl/create_external_table/{instance}.sqlx"
 # --- URI do Cloud Storage ---
 GCS_BASE_URI_TEMPLATE = "gs://grp-venancio-prd-dados_ingestao_dataflow/{instance}/{database}/dbo"
-GCS_BASE_URI_TEMPLATE_FILE = "gs://grp-venancio-prd-dados_ingestao_cloud_run/{instance}"
+GCS_BASE_URI_TEMPLATE_FILE = "gs://grp-venancio-prd-dados_ingestao_cloud_run/"
 
 # --- Validação de Configuração ---
 def validate_config():
