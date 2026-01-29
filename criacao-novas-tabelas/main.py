@@ -154,7 +154,10 @@ def main(request):
                 # Depois monta o GCS URI com a extensão correta baseada no file_format
                 gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE + f"/{cfg['gcs_folder']}" + f"/{cfg['output_file_name']}"
             else:
-                gcs_uri = config.GCS_BASE_URI_TEMPLATE.format(instance=instance_name, database=database_name.lower()) + f"/{source_table.lower()}"
+                parts = source_table.split('.')
+                table_schema_name = parts[0] if len(parts) > 1 else 'dbo'
+                table_name = parts[1] if len(parts) > 1 else source_table
+                gcs_uri = config.GCS_BASE_URI_TEMPLATE.format(instance=instance_name, database=database_name.lower()) + f"/{table_schema_name.lower()}/{table_name.lower()}"
                 file_format = 'parquet'
             ddl_block = dataform_generator.generate_ddl_operation_block(
                 target_dataset=table_data['target_dataset'],

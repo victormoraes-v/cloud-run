@@ -32,7 +32,8 @@ TABLE_TO_INSTANCE_MAP = {
     "portalfornecedor_tables_migration_config": "portalfornecedor",
     "procfit_pbs_log_dados_tables_migration_config": "procfit",
     "pedbot_tables_migration_config": "pedbot",
-    "arquivos_rede_files_migration_config": "arquivos"
+    "arquivos_rede_files_migration_config": "arquivos",
+    "oracle_dvprd_tables_migration_config": "oracle"
 }
 
 # Dicionário que mapeia a tabela de configuração para o ID do segredo de conexão do BD
@@ -52,7 +53,8 @@ TABLE_TO_DB_SECRET_MAP = {
     "portalfornecedor_tables_migration_config": "portalfornecedor_database_connection_config",
     "procfit_pbs_log_dados_tables_migration_config": "procfit_pbs_log_dados_database_connection_config",
     "pedbot_tables_migration_config": "pedbot_database_connection_config",
-    "arquivos_rede_files_migration_config": "arquivos_rede_connection_config"
+    "arquivos_rede_files_migration_config": "arquivos_rede_connection_config",
+    "oracle_dvprd_tables_migration_config": "oracle_dvprd_database_connection_config"
 }
 
 # --- Caminhos de Arquivo no Repositório Dataform ---
@@ -60,7 +62,7 @@ SOURCES_FILE_PATH_TEMPLATE = "definitions/sources/{instance}.js"
 RAWS_DIR_PATH_TEMPLATE = "definitions/bronze/{instance}"
 DDL_OPERATIONS_FILE_PATH_TEMPLATE = "definitions/ddl/create_external_table/{instance}.sqlx"
 # --- URI do Cloud Storage ---
-GCS_BASE_URI_TEMPLATE = "gs://grp-venancio-prd-dados_ingestao_dataflow/{instance}/{database}/dbo"
+GCS_BASE_URI_TEMPLATE = "gs://grp-venancio-prd-dados_ingestao_dataflow/{instance}/{database}"
 GCS_BASE_URI_TEMPLATE_FILE = "gs://grp-venancio-prd-dados_ingestao_cloud_run/"
 
 # --- Validação de Configuração ---

@@ -1,19 +1,48 @@
-# Etapa 1: Imagem base oficial do Python
-FROM python:3.10-slim
+# -----------------------------
+# Base Python
+# -----------------------------
+FROM python:3.10-slim-bullseye
 
-# Diretório de trabalho dentro do contêiner
+# -----------------------------
+# System dependencies
+# -----------------------------
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    gcc \
+    libaio1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# -----------------------------
+# Oracle Instant Client
+# -----------------------------
+WORKDIR /opt/oracle
+
+RUN wget https://download.oracle.com/otn_software/linux/instantclient/2113000/instantclient-basiclite-linux.x64-21.13.0.0.0dbru.zip \
+    && unzip instantclient-basiclite-linux.x64-21.13.0.0.0dbru.zip \
+    && rm *.zip \
+    && echo "/opt/oracle/instantclient_21_13" > /etc/ld.so.conf.d/oracle-instantclient.conf \
+    && ldconfig
+
+# -----------------------------
+# Environment variables
+# -----------------------------
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_21_13
+ENV ORACLE_HOME=/opt/oracle/instantclient_21_13
+
+# -----------------------------
+# App setup
+# -----------------------------
 WORKDIR /app
 
-# Etapa 2: Copie o arquivo de dependências primeiro (melhora cache)
 COPY requirements.txt ./
 
-# Etapa 3: Instale dependências
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Etapa 4: Copie o restante do código da aplicação
 COPY . .
 
-# Etapa 5: Defina o comando para rodar o Job
-# Agora chamamos diretamente o Python, sem functions-framework.
+# -----------------------------
+# Cloud Run (functions-framework)
+# -----------------------------
 CMD ["functions-framework", "--source=main.py", "--target=main", "--port=8080"]
