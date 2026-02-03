@@ -152,7 +152,7 @@ def main(request):
                 
                 file_format = cfg['output_file_format']
                 # Depois monta o GCS URI com a extensão correta baseada no file_format
-                gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE + f"/{cfg['gcs_folder']}" + f"/{cfg['output_file_name']}"
+                gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE + f"{cfg['gcs_folder']}" + f"{cfg['output_file_name']}"
             else:
                 parts = source_table.split('.')
                 table_schema_name = parts[0] if len(parts) > 1 else 'dbo'
