@@ -38,8 +38,10 @@ def get_pending_tables(project_id: str, config_table_id: str, tables_to_create: 
     filter_column = 'SOURCE_FILE_NAME' if is_file_source else 'SOURCE_TABLE_NAME'
     tables_to_create_str = ", ".join(map(lambda x: f"'{x}'", tables_to_create))
     filter_tables = f'AND {filter_column} IN ({tables_to_create_str})' if tables_to_create else ''
+    # filter_tables = f'{filter_column} IN ({tables_to_create_str})' if tables_to_create else ''
 
     query = f"SELECT * FROM `{config_table_id}` WHERE FLAG_TABLE_CREATED = 0 {filter_tables}"
+    # query = f"SELECT * FROM `{config_table_id}` WHERE {filter_tables}"
 
     # Converte o resultado iterável em uma lista de dicionários,
     # com todas as chaves em minúsculas para padronização. 
@@ -124,6 +126,27 @@ def update_table_creation_flags(project_id: str, config_table_id: str, processed
         # Em um cenário de produção, você poderia levantar a exceção para
         # que a função falhe e você seja notificado.
         # raise
+
+def table_exists(project_id: str, dataset_id: str, table_id: str) -> bool:
+    """
+    Verifica se uma tabela existe no BigQuery.
+
+    Args:
+        project_id: O ID do projeto GCP.
+        dataset_id: O ID do dataset.
+        table_id: O ID da tabela.
+
+    Returns:
+        True se a tabela existe, False caso contrário.
+    """
+    client = bigquery.Client(project=project_id)
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
+    
+    try:
+        client.get_table(table_ref)
+        return True
+    except Exception:
+        return False
 
 def execute_ddl_block(project_id: str, ddl_block: str, external_table: str):
     """

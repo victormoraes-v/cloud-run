@@ -84,43 +84,80 @@ class OracleLoader(BaseLoader):
 
     def get_schema(self, eng, table: str) -> List[Tuple[str, str]]:
         """
-        Lê o schema da tabela via dicionário de dados do Oracle.
+        Lê o schema Oracle de forma robusta:
 
-        Se for informado "SCHEMA.TABELA", usa ambos; caso contrário assume o schema
-        padrão do usuário.
+        Fluxo:
+        1) tenta ALL_TAB_COLUMNS direto (schema informado ou default)
+        2) se vazio → resolve via ALL_SYNONYMS
+        3) reconsulta ALL_TAB_COLUMNS com owner real
+        4) valida retorno
+
+        Funciona para:
+        - Views em APPS
+        - Tabelas custom
+        - Tabelas padrão EBS via synonym (AR, HZ, etc)
         """
-        parts = table.split(".")
-        if len(parts) > 1:
-            schema_name = parts[0].upper()
-            tbl_name = parts[1].upper()
-        else:
-            schema_name = None  # usa o schema padrão do usuário
-            tbl_name = table.upper()
 
-        if schema_name:
-            q = text(
-                """
+        parts = table.split(".")
+        input_schema = parts[0].upper() if len(parts) > 1 else None
+        tbl_name = parts[1].upper() if len(parts) > 1 else parts[0].upper()
+
+        def fetch_columns(owner):
+            owner_clause = "AND OWNER = :owner" if owner else ""
+            sql = text(f"""
                 SELECT COLUMN_NAME, DATA_TYPE
-                  FROM ALL_TAB_COLUMNS
-                 WHERE OWNER = :schema_name
-                   AND TABLE_NAME = :tbl_name
-                 ORDER BY COLUMN_ID
-                """
-            )
-            params = {"schema_name": schema_name, "tbl_name": tbl_name}
-        else:
-            q = text(
-                """
-                SELECT COLUMN_NAME, DATA_TYPE
-                  FROM USER_TAB_COLUMNS
-                 WHERE TABLE_NAME = :tbl_name
-                 ORDER BY COLUMN_ID
-                """
-            )
+                FROM ALL_TAB_COLUMNS
+                WHERE TABLE_NAME = :tbl_name
+                {owner_clause}
+                ORDER BY COLUMN_ID
+            """)
+
             params = {"tbl_name": tbl_name}
+            if owner:
+                params["owner"] = owner
+
+            with eng.connect() as c:
+                rows = c.execute(sql, params).fetchall()
+
+            return [(r[0].upper(), r[1].lower()) for r in rows]
+
+        # ----------------------------------------------------
+        # 1️⃣ Tentativa direta (view ou tabela real no schema informado)
+        # ----------------------------------------------------
+        schema = fetch_columns(input_schema)
+
+        if schema:
+            return schema
+
+        # ----------------------------------------------------
+        # 2️⃣ Resolver synonym
+        # ----------------------------------------------------
+        synonym_sql = text("""
+            SELECT TABLE_OWNER
+            FROM ALL_SYNONYMS
+            WHERE SYNONYM_NAME = :tbl_name
+            ORDER BY DECODE(OWNER,'PUBLIC',2,1)
+            FETCH FIRST 1 ROWS ONLY
+        """)
 
         with eng.connect() as c:
-            return [(r[0].upper(), r[1].lower()) for r in c.execute(q, params)]
+            r = c.execute(synonym_sql, {"tbl_name": tbl_name}).fetchone()
+
+        if not r:
+            raise RuntimeError(f"Não foi possível resolver synonym para {table}")
+
+        real_owner = r[0]
+
+        # ----------------------------------------------------
+        # 3️⃣ Rebuscar colunas com owner real
+        # ----------------------------------------------------
+        schema = fetch_columns(real_owner)
+
+        if not schema:
+            raise RuntimeError(f"Tabela {real_owner}.{tbl_name} encontrada mas sem colunas!")
+
+        return schema
+
 
     def generate_select_safe_cast(
         self,

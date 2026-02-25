@@ -33,7 +33,9 @@ TABLE_TO_INSTANCE_MAP = {
     "procfit_pbs_log_dados_tables_migration_config": "procfit",
     "pedbot_tables_migration_config": "pedbot",
     "arquivos_rede_files_migration_config": "arquivos",
-    "oracle_dvprd_tables_migration_config": "oracle"
+    "oracle_dvprd_tables_migration_config": "oracle",
+    "programare_atacado_privado_tables_migration_config": "programare",
+    "programare_programare_erp_venancio_tables_migration_config": "programare"
 }
 
 # Dicionário que mapeia a tabela de configuração para o ID do segredo de conexão do BD
@@ -54,7 +56,9 @@ TABLE_TO_DB_SECRET_MAP = {
     "procfit_pbs_log_dados_tables_migration_config": "procfit_pbs_log_dados_database_connection_config",
     "pedbot_tables_migration_config": "pedbot_database_connection_config",
     "arquivos_rede_files_migration_config": "arquivos_rede_connection_config",
-    "oracle_dvprd_tables_migration_config": "oracle_dvprd_database_connection_config"
+    "oracle_dvprd_tables_migration_config": "oracle_dvprd_database_connection_config",
+    "programare_atacado_privado_tables_migration_config": "programare_atacado_privado_database_connection_config",
+    "programare_programare_erp_venancio_tables_migration_config": "programare_programare_erp_venancio_database_connection_config"
 }
 
 # --- Caminhos de Arquivo no Repositório Dataform ---

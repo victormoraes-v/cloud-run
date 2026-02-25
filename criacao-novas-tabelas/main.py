@@ -95,12 +95,30 @@ def main(request):
             source_table = table_data.get('source_table_name') or table_data.get('source_file_name', '')
             target_table = table_data['target_table_name']
             
+            print(f"--- Processando: {source_table} -> {target_table} ---")
+            
+            # Verifica se a tabela externa já existe no BigQuery antes de processar
+            # Determina o nome da tabela externa
+            if is_file_source:
+                # Para arquivos, busca a configuração primeiro para obter o target_table_name correto
+                cfg = gcp_services.get_migration_table_config(
+                    config.GCP_PROJECT_ID,
+                    'arquivos_rede_files_format_ingestion_config',
+                    target_table
+                )
+                external_name = f"ext_{cfg['target_table_name'].replace('__', '_')}"
+            else:
+                external_name = f"ext_{target_table.lower().replace('__', '_')}"
+            
+            # Verifica se a tabela já existe no BigQuery
+            # if gcp_services.table_exists(config.GCP_PROJECT_ID, 'landing', external_name):
+            #     print(f"⚠️ Tabela landing.{external_name} já existe. Pulando processamento desta tabela.")
+            #     continue
+            
             # --- CORREÇÃO: Revertido para o nome original da sua coluna ---
             incremental_join_col = table_data.get('incremental_join_clause')
             
             filter_column_incremental_join = table_data['filter_column'] if incremental_join_col else None
-            
-            print(f"--- Processando: {source_table} -> {target_table} ---")
 
             # 7a. Lógica para o modelo RAW (.sqlx)
             # Para arquivos, cria o loader com os parâmetros específicos desta tabela
@@ -133,23 +151,12 @@ def main(request):
             github_client.upsert_sqlx_file(raw_file_path, new_branch_name, sqlx_content, commit_message_raw)
 
             # 7b. Lógica para o arquivo de FONTES (.js)
-            external_name = f"ext_{target_table.lower().replace('__', '_')}"
             if f'name: "{external_name}"' not in original_sources_content:
                 source_block = dataform_generator.generate_source_js_block(table_data)
                 new_source_blocks.append(source_block)
 
             # 7c. Lógica para o arquivo de DDL (.sqlx)
             if is_file_source:               
-                # Busca TODAS as configurações do arquivo (pode ter múltiplas configurações)
-                cfg = gcp_services.get_migration_table_config(
-                    config.GCP_PROJECT_ID,
-                    'arquivos_rede_files_format_ingestion_config',
-                    target_table
-                )
-                
-                # Encontra a configuração que corresponde a esta linha do pending_tables
-                #cfg = next((c for c in all_configs if c.get('target_table_name', '').lower() == target_table.lower()), None)
-                
                 file_format = cfg['output_file_format']
                 # Depois monta o GCS URI com a extensão correta baseada no file_format
                 gcs_uri = config.GCS_BASE_URI_TEMPLATE_FILE + f"{cfg['gcs_folder']}" + f"{cfg['output_file_name']}"
@@ -159,6 +166,7 @@ def main(request):
                 table_name = parts[1] if len(parts) > 1 else source_table
                 gcs_uri = config.GCS_BASE_URI_TEMPLATE.format(instance=instance_name, database=database_name.lower()) + f"/{table_schema_name.lower()}/{table_name.lower()}"
                 file_format = 'parquet'
+            
             ddl_block = dataform_generator.generate_ddl_operation_block(
                 target_dataset=table_data['target_dataset'],
                 target_table=external_name,
