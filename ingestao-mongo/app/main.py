@@ -2,9 +2,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 from google.cloud import bigquery
 from .logging_config import setup_logging
-from .config import load_mongo_secret
+from .config.config import load_mongo_secret
 from .mongo_client import MongoRepository
-from .services.extractor import build_mongo_query, build_projection
+from .services.extractor import build_mongo_query, build_projection, get_max_date_from_bq_table
 from .services.transformer import normalize_documents
 from .services.writer import dataframe_to_parquet_gcs
 import os
@@ -49,10 +49,18 @@ def run():
     # 4) Executar STANDARD ou FREE
     if row.PIPELINE_TYPE == "STANDARD":
         logger.info("🔍 Execução em modo STANDARD")
-        ts = start_date or "1900-01-01T00:00:00Z"
-        ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
-        query = build_mongo_query(row.FILTER_COLUMN, ts)
+        # A tabela de configuração deve ter as colunas TARGET_DATASET e TARGET_TABLE
+        logger.info(f"Buscando data de corte em {project_id}.{row.TARGET_DATASET}.{row.TARGET_TABLE_NAME}")
+        incremental_ts = get_max_date_from_bq_table(
+            bq=bq,
+            project_id=project_id,
+            target_dataset=row.TARGET_DATASET,
+            target_table=row.TARGET_TABLE_NAME
+        )
+        logger.info(f"Data de corte: {incremental_ts}")
+
+        query = build_mongo_query(row.FILTER_COLUMN, incremental_ts)
         projection = build_projection(json.loads(row.PROJECTION))
         cursor = repo.find(query, projection, no_cursor_timeout=True)
 

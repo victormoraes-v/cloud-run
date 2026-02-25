@@ -15,7 +15,7 @@ def normalize_documents(documents):
         return pd.DataFrame()
 
     # df = pd.json_normalize(documents)
-    df = pd.toDataFrame(documents)
+    df = pd.DataFrame(documents)
     logger.info(f"Normalização concluída — linhas={len(df)} colunas={len(df.columns)}")
 
     df = _sanitize_column_names(df)
