@@ -25,9 +25,9 @@ class MongoRepository:
 
         logger.info("Conectado ao MongoDB DB=%s Collection=%s", auth_db, collection_name)
 
-    def find(self, query, projection):
+    def find(self, query, projection, **kwargs):
         """Extração para pipelines STANDARD"""
-        return self._collection.find(query, projection)
+        return self._collection.find(query, projection, **kwargs)
 
     def aggregate(self, pipeline: list):
         """Extração para pipelines FREE"""

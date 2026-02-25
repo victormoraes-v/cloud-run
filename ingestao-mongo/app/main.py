@@ -54,7 +54,7 @@ def run():
 
         query = build_mongo_query(row.FILTER_COLUMN, ts)
         projection = build_projection(json.loads(row.PROJECTION))
-        cursor = repo.find(query, projection)
+        cursor = repo.find(query, projection, no_cursor_timeout=True)
 
     elif row.PIPELINE_TYPE == "FREE":
         logger.info("🔍 Execução em modo FREE (aggregation pipeline)")
@@ -77,7 +77,7 @@ def run():
     output = dataframe_to_parquet_gcs(
         df=df,
         bucket_name=os.getenv("BUCKET_NAME"),
-        prefix=f'mongo/{mongo_secret["database_name"]}/{row.COLLECTION_NAME}', #row.gcs_prefix, #ALTERAR
+        prefix=f'mongo_test/{mongo_secret["database_name"]}/{row.COLLECTION_NAME}', #row.gcs_prefix, #ALTERAR
         file_prefix=row.COLLECTION_NAME
     )
 
