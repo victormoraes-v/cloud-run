@@ -8,20 +8,27 @@ import logging
 
 logger = logging.getLogger("mongo_to_gcs.writer")
 
-def dataframe_to_parquet_gcs(df: pd.DataFrame, bucket_name: str, prefix: str, file_prefix: str):
+def dataframe_to_parquet_gcs(
+    df: pd.DataFrame,
+    bucket_name: str,
+    prefix: str,
+    file_prefix: str,
+    ingest_ts,
+    run_id: str
+):
     client = storage.Client()
     bucket = client.bucket(bucket_name)
 
-    tz = pytz.timezone('America/Sao_Paulo')
-    now = datetime.now(tz)
-    file_suffix = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    partition = now.strftime("%Y-%m-%d")
+    # file_suffix = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
 
-    df["dt_ingestao"] = now
+    partition = ingest_ts.date().isoformat()
+
+    df["dt_ingestao"] = ingest_ts
+    df["run_id"] = run_id
 
     # Caminho final no GCS
-    file_name = f"{file_prefix}_{file_suffix}.parquet"
-    blob_path = f"{prefix}/dt={partition}/{file_name}"
+    file_name = f"{file_prefix}.parquet"
+    blob_path = f"{prefix}/dt={partition}/{run_id}/{file_name}"
     blob = bucket.blob(blob_path)
 
     # Serialização em Parquet

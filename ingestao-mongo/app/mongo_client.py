@@ -29,6 +29,6 @@ class MongoRepository:
         """Extração para pipelines STANDARD"""
         return self._collection.find(query, projection, **kwargs)
 
-    def aggregate(self, pipeline: list):
+    def aggregate(self, pipeline: list, **kwargs):
         """Extração para pipelines FREE"""
-        return self._collection.aggregate(pipeline, allowDiskUse=True)
+        return self._collection.aggregate(pipeline, allowDiskUse=True, **kwargs)
