@@ -6,7 +6,8 @@ from utils import (
     normalize_column_names,
     add_ingestion_timestamp,
     read_file_from_smb,
-    save_to_gcs
+    save_to_gcs,
+    normalize_dataframe_for_parquet
 )
 
 def process_generic(cfg: dict, file_path: str, username: str, password: str, bucket_name: str):
@@ -73,6 +74,8 @@ def process_generic(cfg: dict, file_path: str, username: str, password: str, buc
 def _apply_common_transformations(df, cfg):
     """Aplica normalização de colunas e timestamp."""
     df = normalize_column_names(df)
+    if cfg.get("output_file_format", "csv") == 'parquet':
+        df = normalize_dataframe_for_parquet(df)
     df = add_ingestion_timestamp(df)
     return df
 

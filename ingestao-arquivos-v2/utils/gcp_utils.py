@@ -128,50 +128,50 @@ def build_destination_path(original_file_name: str, folder_path: str, write_mode
     else:  # overwrite
         return f"{folder_path}{stem}.{file_format}"
 
-def write_dataframe_to_gcs(df, original_file_name: str, destination_bucket_name: str, folder_path: str = "arquivos/") -> str:
-    """
-    Converte um DataFrame em CSV e salva no GCS.
-    Retorna o caminho completo gs://...
-    """
-    destination_file_name = f"{folder_path}{Path(original_file_name).stem}.csv"
-    destination_bucket = storage_client.bucket(destination_bucket_name)
-    destination_blob = destination_bucket.blob(destination_file_name)
+# def write_dataframe_to_gcs(df, original_file_name: str, destination_bucket_name: str, folder_path: str = "arquivos/") -> str:
+#     """
+#     Converte um DataFrame em CSV e salva no GCS.
+#     Retorna o caminho completo gs://...
+#     """
+#     destination_file_name = f"{folder_path}{Path(original_file_name).stem}.csv"
+#     destination_bucket = storage_client.bucket(destination_bucket_name)
+#     destination_blob = destination_bucket.blob(destination_file_name)
 
-    csv_data = df.to_csv(sep=',', index=False, encoding='utf-8')
-    destination_blob.upload_from_string(csv_data, content_type='text/csv')
+#     csv_data = df.to_csv(sep=',', index=False, encoding='utf-8')
+#     destination_blob.upload_from_string(csv_data, content_type='text/csv')
 
-    full_path = f"gs://{destination_bucket_name}/{destination_file_name}"
-    logging.info(f"DataFrame salvo com sucesso em: {full_path}")
-    return full_path
+#     full_path = f"gs://{destination_bucket_name}/{destination_file_name}"
+#     logging.info(f"DataFrame salvo com sucesso em: {full_path}")
+#     return full_path
 
-def write_dataframe_to_gcs_parquet(df, original_file_name: str, destination_bucket_name: str, folder_path: str = "arquivos/") -> str:
-    """
-    Converte um DataFrame em Parquet e salva no GCS.
-    Retorna o caminho completo gs://...
-    """
-    destination_file_name = f"{folder_path}{Path(original_file_name).stem}.parquet"
-    destination_bucket = storage_client.bucket(destination_bucket_name)
-    destination_blob = destination_bucket.blob(destination_file_name)
+# def write_dataframe_to_gcs_parquet(df, original_file_name: str, destination_bucket_name: str, folder_path: str = "arquivos/") -> str:
+#     """
+#     Converte um DataFrame em Parquet e salva no GCS.
+#     Retorna o caminho completo gs://...
+#     """
+#     destination_file_name = f"{folder_path}{Path(original_file_name).stem}.parquet"
+#     destination_bucket = storage_client.bucket(destination_bucket_name)
+#     destination_blob = destination_bucket.blob(destination_file_name)
 
-    # Força upload resumível
-    destination_blob.chunk_size = 8 * 1024 * 1024  # 8MB (pode subir para 16/32MB se quiser)
+#     # Força upload resumível
+#     destination_blob.chunk_size = 8 * 1024 * 1024  # 8MB (pode subir para 16/32MB se quiser)
 
-    # Salvar DataFrame em buffer de memória no formato parquet
-    import io
-    parquet_buffer = io.BytesIO()
-    df.to_parquet(parquet_buffer, index=False, engine="pyarrow")
-    parquet_buffer.seek(0)
+#     # Salvar DataFrame em buffer de memória no formato parquet
+#     import io
+#     parquet_buffer = io.BytesIO()
+#     df.to_parquet(parquet_buffer, index=False, engine="pyarrow")
+#     parquet_buffer.seek(0)
 
-    # Upload para GCS
-    destination_blob.upload_from_file(
-        parquet_buffer, 
-        content_type="application/octet-stream",  # ou "application/x-parquet"
-        timeout=1200
-    )
+#     # Upload para GCS
+#     destination_blob.upload_from_file(
+#         parquet_buffer, 
+#         content_type="application/octet-stream",  # ou "application/x-parquet"
+#         timeout=1200
+#     )
 
-    full_path = f"gs://{destination_bucket_name}/{destination_file_name}"
-    logging.info(f"DataFrame salvo com sucesso em: {full_path}")
-    return full_path
+#     full_path = f"gs://{destination_bucket_name}/{destination_file_name}"
+#     logging.info(f"DataFrame salvo com sucesso em: {full_path}")
+#     return full_path
 
 def save_to_gcs(
     df: pd.DataFrame,
@@ -229,7 +229,7 @@ def save_to_gcs(
     buffer = BytesIO()
 
     if file_format == "csv":
-        df.to_csv(buffer, index=False, encoding="utf-8")
+        df.to_csv(buffer, index=False, encoding="utf-8",na_rep="")
         buffer.seek(0)
         content_type = "text/csv"
 

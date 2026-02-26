@@ -3,6 +3,7 @@ from datetime import datetime
 import pytz
 import unicodedata
 import re
+import numpy as np
 
 def _remove_accents_and_handle_cedilla(text):
     """
@@ -60,4 +61,18 @@ def add_ingestion_timestamp(df: pd.DataFrame, tz: str = "America/Sao_Paulo") -> 
     """
     current_ts = datetime.now(pytz.timezone(tz)).replace(tzinfo=None)
     df["DT_INGESTAO"] = current_ts
+    return df
+
+def normalize_dataframe_for_parquet(df: pd.DataFrame) -> pd.DataFrame:
+    # 1️⃣ Converte tipos automaticamente (usa pandas nullable dtypes)
+    df = df.convert_dtypes()
+
+    # 2️⃣ Para qualquer coluna ainda object, força string
+    for col in df.columns:
+        if df[col].dtype == "object":
+            df[col] = df[col].astype("string")
+
+    # 3️⃣ Opcional: substituir np.nan por None (mais seguro pro parquet)
+    df = df.replace({np.nan: None})
+
     return df
