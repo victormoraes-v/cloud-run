@@ -18,7 +18,7 @@ import json
 
 load_dotenv()
 
-def _process_collection(row, project_id, run_ts, run_id, db_secret):
+def _process_collection(row, project_id, run_ts, run_id, db_secret, batch_size=20000):
     logger = setup_logging()
     bq = bigquery.Client()  # cria client por thread (mais seguro)
 
@@ -39,7 +39,12 @@ def _process_collection(row, project_id, run_ts, run_id, db_secret):
             target_dataset=row.TARGET_DATASET,
             target_table=row.TARGET_TABLE_NAME
         )
-        query = build_mongo_query(row.FILTER_COLUMN, incremental_ts)
+        #query = build_mongo_query(row.FILTER_COLUMN, incremental_ts)
+
+        query = None
+        
+        if row.FILTER_COLUMN:
+            query = build_mongo_query(row.FILTER_COLUMN, incremental_ts)
         
         projection = None
 
@@ -47,18 +52,18 @@ def _process_collection(row, project_id, run_ts, run_id, db_secret):
             projection_list = json.loads(row.PROJECTION)
             if projection_list:  # lista não vazia
                 projection = build_projection(projection_list)
-        
-        cursor = repo.find(query, projection, no_cursor_timeout=True, batch_size=20000)
+
+        cursor = repo.find(query, projection, no_cursor_timeout=True, batch_size=batch_size)
 
     elif row.PIPELINE_TYPE == "FREE":
         pipeline = json.loads(row.MONGO_QUERY)
-        cursor = repo.aggregate(pipeline, batch_size=20000)
+        cursor = repo.aggregate(pipeline, batch_size=batch_size)
 
     else:
         raise ValueError(f"pipeline_type inválido: {row.PIPELINE_TYPE}")
 
     # 4) Chunk -> Parquet
-    chunk_size = 20000
+    chunk_size = batch_size
     total_docs = 0
 
     prefix = f'mongo/{mongo_secret["database_name"]}/{row.COLLECTION_NAME}'
@@ -89,11 +94,12 @@ def run():
     config_table = os.getenv("CONFIG_SECRET_NAME")
     # pipeline_name = os.getenv("PIPELINE_NAME")
     collections_env = os.getenv("COLLECTIONS")
+    batch_size = int(os.getenv("BATCH_SIZE"))
     # start_date = os.getenv("START_DATE")
     # env = os.getenv("ENV", "PROD")
 
     if collections_env:
-        logger.info("📌 Filtrando collections via env: %s", collections_env)
+        logger.info("📌 Filtrando collections: %s", collections_env)
     else:
         logger.info("📌 Processando todas as collections ativas")
 
@@ -154,7 +160,7 @@ def run():
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
-            executor.submit(_process_collection, row, project_id, run_ts, run_id, db_secret): row.COLLECTION_NAME
+            executor.submit(_process_collection, row, project_id, run_ts, run_id, db_secret, batch_size): row.COLLECTION_NAME
             for row in rows
         }
 

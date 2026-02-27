@@ -5,6 +5,7 @@ import pytz
 import pandas as pd
 from google.cloud import storage
 import logging
+from google.api_core.retry import Retry
 
 logger = logging.getLogger("mongo_to_gcs.writer")
 
@@ -37,7 +38,13 @@ def dataframe_to_parquet_gcs(
     buffer.seek(0)
 
     # Upload
-    blob.upload_from_file(buffer, content_type="application/octet-stream", timeout=1200)
+    retry = Retry(deadline=300)
+    blob.upload_from_file(
+        buffer,
+        content_type="application/octet-stream",
+        timeout=1200,
+        retry=retry
+    )
 
     logger.info(f"Parquet salvo em: gs://{bucket_name}/{blob_path}")
     return blob_path
