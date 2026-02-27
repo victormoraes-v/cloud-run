@@ -14,10 +14,12 @@ def normalize_documents(documents):
     if not documents:
         return pd.DataFrame()
 
-    df = pd.json_normalize(documents)
+    # df = pd.json_normalize(documents)
+    df = pd.DataFrame(documents)
     logger.info(f"Normalização concluída — linhas={len(df)} colunas={len(df.columns)}")
 
     df = _sanitize_column_names(df)
+    df = _normalize_deleted_at(df)
 
     for col in df.columns:
         df[col] = df[col].apply(_normalize_scalar_for_parquet)
@@ -68,4 +70,12 @@ def _sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
         safe_columns.append(safe)
 
     df.columns = safe_columns
+    return df
+
+
+def _normalize_deleted_at(df):
+    if "deletedAt" in df.columns:
+        df["deletedAt"] = (
+            pd.to_datetime(df["deletedAt"], errors="coerce", utc=True)
+        )
     return df
