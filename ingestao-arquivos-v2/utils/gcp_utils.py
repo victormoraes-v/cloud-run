@@ -90,11 +90,11 @@ def get_all_migration_table_configs(table_config, file_name):
     query = f"""
     SELECT *
     FROM data_migration_config.{table_config}
-    WHERE file_name = @file_name AND active = TRUE
-    ORDER BY sheet_name, file_name
+    WHERE source_file_name = @source_file_name AND active = TRUE
+    ORDER BY sheet_name, source_file_name
     """
     result = list(client.query(query, job_config=bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ScalarQueryParameter("file_name", "STRING", file_name)]
+        query_parameters=[bigquery.ScalarQueryParameter("source_file_name", "STRING", file_name)]
     )))
 
     if not result:
