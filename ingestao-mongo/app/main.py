@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+import importlib
 from dotenv import load_dotenv
+import pytz
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -18,7 +20,7 @@ import json
 
 load_dotenv()
 
-def _process_collection(row, project_id, run_ts, run_id, db_secret, batch_size=20000):
+def _process_collection(row, project_id, run_ts, run_id, db_secret, start_date, end_date, batch_size=20000):
     logger = setup_logging()
     bq = bigquery.Client()  # cria client por thread (mais seguro)
 
@@ -28,12 +30,12 @@ def _process_collection(row, project_id, run_ts, run_id, db_secret, batch_size=2
     # 2) Conectar no Mongo (client por thread)
     repo = MongoRepository(
         mongo_secret=mongo_secret,
-        collection_name=row.COLLECTION_NAME
+        collection_name=row.SOURCE_TABLE_NAME
     )
 
     # 3) Buscar dados (STANDARD/FREE)
     if row.PIPELINE_TYPE == "STANDARD":
-        incremental_ts = get_max_date_from_bq_table(
+        incremental_ts = start_date or get_max_date_from_bq_table(
             bq=bq,
             project_id=project_id,
             target_dataset=row.TARGET_DATASET,
@@ -44,7 +46,7 @@ def _process_collection(row, project_id, run_ts, run_id, db_secret, batch_size=2
         query = None
         
         if row.FILTER_COLUMN:
-            query = build_mongo_query(row.FILTER_COLUMN, incremental_ts)
+            query = build_mongo_query(row.FILTER_COLUMN, incremental_ts, end_date)
         
         projection = None
 
@@ -66,7 +68,7 @@ def _process_collection(row, project_id, run_ts, run_id, db_secret, batch_size=2
     chunk_size = batch_size
     total_docs = 0
 
-    prefix = f'mongo/{mongo_secret["database_name"]}/{row.COLLECTION_NAME}'
+    prefix = f'mongo/{mongo_secret["database_name"]}/{row.SOURCE_TABLE_NAME}'
 
     for i, batch in enumerate(chunked_cursor(cursor, chunk_size)):
         total_docs += len(batch)
@@ -77,12 +79,12 @@ def _process_collection(row, project_id, run_ts, run_id, db_secret, batch_size=2
             df=df,
             bucket_name=os.getenv("BUCKET_NAME"),
             prefix=prefix,
-            file_prefix=f"{row.COLLECTION_NAME}_part_{i:05d}",
+            file_prefix=f"{row.SOURCE_TABLE_NAME}_part_{i:05d}",
             ingest_ts=run_ts,
             run_id=run_id
         )
 
-    logger.info("✅ [%s] Finalizado — docs=%s", row.COLLECTION_NAME, total_docs)
+    logger.info("✅ [%s] Finalizado — docs=%s", row.SOURCE_TABLE_NAME, total_docs)
     return total_docs
 
 
@@ -95,7 +97,10 @@ def run():
     # pipeline_name = os.getenv("PIPELINE_NAME")
     collections_env = os.getenv("COLLECTIONS")
     batch_size = int(os.getenv("BATCH_SIZE"))
-    # start_date = os.getenv("START_DATE")
+    start_date = os.getenv("START_DATE")
+    end_date = os.getenv("END_DATE")
+    if not end_date:
+        end_date = None
     # env = os.getenv("ENV", "PROD")
 
     if collections_env:
@@ -103,7 +108,7 @@ def run():
     else:
         logger.info("📌 Processando todas as collections ativas")
 
-    run_ts = datetime.now(timezone.utc)
+    run_ts = datetime.now()
     run_id = run_ts.strftime("%Y%m%dT%H%M%SZ")
     logger.info("🧾 run_id=%s dt_ingestao=%s", run_id, run_ts.isoformat())
 
@@ -126,7 +131,7 @@ def run():
         collections_list = [c.strip() for c in collections_env.split(",") if c.strip()]
         
         if collections_list:
-            base_sql += " AND COLLECTION_NAME IN UNNEST(@collections)"
+            base_sql += " AND SOURCE_TABLE_NAME IN UNNEST(@collections)"
             
             query_parameters.append(
                 bigquery.ArrayQueryParameter(
@@ -160,7 +165,7 @@ def run():
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
-            executor.submit(_process_collection, row, project_id, run_ts, run_id, db_secret, batch_size): row.COLLECTION_NAME
+            executor.submit(_process_collection, row, project_id, run_ts, run_id, db_secret, start_date, end_date, batch_size): row.SOURCE_TABLE_NAME
             for row in rows
         }
 

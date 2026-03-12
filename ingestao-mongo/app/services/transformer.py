@@ -24,7 +24,10 @@ def normalize_documents(documents):
     for col in df.columns:
         df[col] = df[col].apply(_normalize_scalar_for_parquet)
 
-    _ensure_arrow_friendly_types(df)
+    #_ensure_arrow_friendly_types(df)
+     # FORÇA TUDO COMO STRING
+    df = df.astype(str)
+
     return df
 
 
