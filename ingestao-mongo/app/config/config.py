@@ -1,8 +1,6 @@
 import json
 import os
 from google.cloud import secretmanager
-from .models import CollectionConfig
-
 
 def load_mongo_secret(secret_name: str) -> dict:
     client = secretmanager.SecretManagerServiceClient()

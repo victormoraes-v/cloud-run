@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any
 class CollectionConfig:
     name: str                          # Nome lógico (ex: 'customers')
     db_name: str                       # Nome do DB no Mongo
-    collection_name: str              # Nome da coleção no Mongo
+    source_table_name: str              # Nome da coleção no Mongo
     projection: List[str]             # Campos a projetar
     types: Dict[str, str]             # Mapeamento campo -> tipo lógico ('str', 'date', etc.)
     dedupe_keys: List[str]            # Colunas para remover duplicadas (ex: ['document'])
